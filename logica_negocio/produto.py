@@ -4,6 +4,9 @@ from models import Produto
 from logica_negocio import categoria
 from sqlalchemy import select
 
+
+
+
 def incluir(motor):
     print("Incluir novo produto")
     nome = input("Qual o nome do produto?")
@@ -60,3 +63,49 @@ def alterar(motor):
 
         sessao.commit()
         print(f"Produto Alterado!")
+
+
+def remover(motor):
+    id_produto = selecionar(motor)
+    with Session(motor) as sessao:
+        produto = sessao.get(Produto, id_produto)
+        confirma = input(f"Confirma a remoção do produto '{produto.nome}' (S/N)? ")
+        if confirma[0].lower() == "S":
+            sessao.delete(produto)
+            sessao.commit()
+            print("Produto removido com sucesso!")
+
+def listar(motor):
+    print("Nome                                           Preco   Estoque   Ativo  Categoria")
+    print("________________________________________  __________   _______   _____  ______ _ _   _")
+    with Session(motor) as sessao:
+        sentenca = select(Produto).order_by(Produto.nome)
+        rset = sessao.execute(sentenca).scalars()
+        for produto in rset:
+            ativo = "S" if produto.ativo else "N"
+            print(f"{produto.nome[:40]:40s} {produto.preco:10.2f} {produto.estoque:7d}  {ativo} {produto.categoria.nome}")
+
+def sem_estoque(motor):
+    print("Nome                                           Preco   Estoque   Ativo  Categoria")
+    print("________________________________________  __________   _______   _____  ______ _ _   _")
+    with Session(motor) as sessao:
+        sentenca = select(Produto).where(Produto.estoque <=0).order_by(Produto.nome)
+        rset = sessao.execute(sentenca).scalars()
+        for produto in rset:
+            ativo = "S" if produto.ativo else "N"
+            print(f"{produto.nome[:40]:40s} {produto.preco:10.2f} {produto.estoque:7d}  {ativo} {produto.categoria.nome}")
+
+
+def vender(motor):
+    id_produto = selecionar(motor)
+    with Session(motor) as sessao:
+        produto = sessao.get(Produto, id_produto)
+        print(f" No momento, {produto.estoque} unidades de {produto.nome} em estoque")
+        unidades = int(input("Venderemos quantas"))
+        if unidades <= produto.estoque:
+            novo_estoque = produto.estoque - unidades
+            print(f"Vendendo {unidades} unidades e deixando {novo_estoque} no estoque")
+            produto.estoque = novo_estoque
+            sessao.commit()
+        else:
+            print("Não temos estoque suficiente...")
